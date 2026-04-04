@@ -1,0 +1,20 @@
+# build
+/build/
+/bin/
+/out/
+
+# object files
+*.o
+*.a
+*.so
+
+# executables
+*.out
+*.exe
+
+# editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
