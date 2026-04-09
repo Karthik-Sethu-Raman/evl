@@ -32,7 +32,7 @@ The file is structured as:
 | AEAD Scheme | AES-GCM |
 | TAG_SIZE    | 16 bytes |
 | NONCE_SIZE  | 12 bytes |
-| SALT_SIZE   | 16 bytes |
+| SALT_SIZE   | 32 bytes |
 | FILE_ID_SIZE| 16 bytes |
 
 ### 2.3 Key Derivation
@@ -81,7 +81,7 @@ The header is stored in plaintext and authenticated separately.
 |--------|------|----------------|------------|--------------------|
 | 0      | 4    | magic          | ASCII      | `EVL1`             |
 | 4      | 1    | format_version | uint8      | Must be `1`        |
-| 5      | 16   | salt           | byte[16]   | Argon2id salt      |
+| 5      | 32   | salt           | byte[32]   | Argon2id salt      |
 | 21     | 16   | file_id        | byte[16]   | Unique identifier  |
 | 37     | 8    | file_size      | uint64 LE  | Logical size       |
 | 45     | 4    | block_size     | uint32 LE  | Block size         |
@@ -90,7 +90,7 @@ The header is stored in plaintext and authenticated separately.
 ### 3.3 Header Size
 
 ```
-HEADER_SIZE     = 57 bytes
+HEADER_SIZE     = 73 bytes
 HEADER_TAG_SIZE = 16 bytes
 ```
 
