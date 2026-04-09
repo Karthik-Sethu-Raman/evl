@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #define EVL_SALT_SIZE 16
-#define EVL_FILE_ID_SIZE 16
+#define EVL_FILE_ID_SIZE 32
 
 typedef struct {
     uint8_t magic[4];

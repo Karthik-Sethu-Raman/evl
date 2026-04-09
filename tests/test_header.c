@@ -48,17 +48,42 @@ int main() {
 
  
     evl_header_serialize(&original, buffer);
+    if (evl_header_serialize(&original, buffer) != 0) {
+        printf("\nFAIL: Serialization failed for valid header\n");
+        return 1;
+    }
 
     printf("Serialized Header (hex):\n");
     print_hex(buffer, BUF_SIZE);
 
     evl_header_deserialize(buffer, &reconstructed);
+    if (evl_header_deserialize(buffer, &reconstructed) != 0) {
+        printf("\nFAIL: Deserialization failed for valid header\n");
+        return 1;
+    }
 
  
     if (compare_headers(&original, &reconstructed)) {
         printf("\nPASS: Header serialization/deserialization correct\n");
     } else {
         printf("\nFAIL: Header mismatch\n");
+        return 1;
+    }
+
+    if (evl_header_deserialize(NULL, &reconstructed) != -3) {
+        printf("FAIL: NULL buffer should return -3\n");
+        return 1;
+    }
+
+    if (evl_header_deserialize(buffer, NULL) != -3) {
+        printf("FAIL: NULL output header should return -3\n");
+        return 1;
+    }
+
+    original.block_size = 0;
+    if (evl_header_serialize(&original, buffer) != -4) {
+        printf("FAIL: block_size=0 should fail serialization with -4\n");
+        return 1;
     }
 
     return 0;
