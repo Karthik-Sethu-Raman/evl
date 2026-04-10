@@ -19,5 +19,8 @@
 # OS
 .DS_Store
 
-test_*
+#binaries
+test_crypto
+test_utils
+test_header
 *.out
