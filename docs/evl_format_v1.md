@@ -59,9 +59,9 @@ Derived keys:
 |--------------------|------------|
 | DEFAULT_BLOCK_SIZE | 4096 bytes |
 
-### 2.6 Hash Function
+### 2.6 Nonce Generation
 
-SHA-256 — used for nonce derivation.
+Per-block nonces are generated using a CSPRNG (`RAND_bytes`) at encryption time and stored on disk with each block.
 
 ---
 
@@ -82,15 +82,14 @@ The header is stored in plaintext and authenticated separately.
 | 0      | 4    | magic          | ASCII      | `EVL1`             |
 | 4      | 1    | format_version | uint8      | Must be `1`        |
 | 5      | 32   | salt           | byte[32]   | Argon2id salt      |
-| 21     | 16   | file_id        | byte[16]   | Unique identifier  |
-| 37     | 8    | file_size      | uint64 LE  | Logical size       |
-| 45     | 4    | block_size     | uint32 LE  | Block size         |
-| 49     | 8    | version        | uint64 LE  | Global version     |
+| 37     | 16   | file_id        | byte[16]   | Unique identifier  |
+| 53     | 8    | file_size      | uint64 LE  | Logical size       |
+| 61     | 4    | block_size     | uint32 LE  | Block size         |
 
 ### 3.3 Header Size
 
 ```
-HEADER_SIZE     = 73 bytes
+HEADER_SIZE     = 65 bytes
 HEADER_TAG_SIZE = 16 bytes
 ```
 
@@ -132,9 +131,10 @@ On failure:
 ### 4.1 Layout
 
 ```
-BLOCK_i = [ ciphertext_i | tag_i ]
+BLOCK_i = [ nonce_i | ciphertext_i | tag_i ]
 ```
 
+- `nonce_i` — 12 bytes, randomly generated at encryption time
 - `ciphertext_i` — ≤ block_size bytes
 - `tag_i` — 16 bytes
 
@@ -153,45 +153,45 @@ BLOCK_i = [ ciphertext_i | tag_i ]
 ```
 [file_id     : 16 bytes]
 [block_index : uint64 LE]
-[version     : uint64 LE]
 [block_size  : uint32 LE]
 ```
 
 ```
-AAD_SIZE = 36 bytes
+AAD_SIZE = 28 bytes
 ```
 
 ### 5.2 Purpose
 
 - Prevent block swapping
 - Prevent cross-file substitution
-- Prevent intra-file replay
 - Bind structural parameters
+
+> **Note:** Block-level replay protection (substitution of an old block from a file snapshot) is explicitly out of scope for v1. See Section 12.
 
 ---
 
-## 6. Nonce Derivation
+## 6. Nonce Generation
 
 ```
-nonce_i = first 12 bytes of SHA-256(
-    file_id              ||
-    block_index (uint64 LE) ||
-    version     (uint64 LE)
-)
+nonce_i = RAND_bytes(12)   // generated fresh at encryption time
 ```
+
+Stored on disk as the first 12 bytes of each block (see Section 4.1).
 
 ### 6.1 Requirements
 
-- **MUST** be unique per encryption
-- **MUST** be deterministic
-- **MUST NOT** repeat for the same key
+- **MUST** be generated fresh on every encryption of a block, including rewrites
+- **MUST NOT** be reused across encryptions under the same key
+- Reusing a stored nonce on overwrite is forbidden
 
 ---
 
 ## 7. Block Encryption
 
 ```
-(ciphertext_i, tag_i) = AES-GCM(enc_key, nonce_i, plaintext_block_i, AAD_i)
+nonce_i                    = RAND_bytes(12)
+(ciphertext_i, tag_i)      = AES-GCM(enc_key, nonce_i, plaintext_block_i, AAD_i)
+stored_block_i             = [ nonce_i | ciphertext_i | tag_i ]
 ```
 
 ---
@@ -201,7 +201,7 @@ nonce_i = first 12 bytes of SHA-256(
 ```
 BLOCK_OFFSET(i) = HEADER_SIZE
                 + HEADER_TAG_SIZE
-                + i * (block_size + TAG_SIZE)
+                + i * (NONCE_SIZE + block_size + TAG_SIZE)
 ```
 
 ---
@@ -214,9 +214,8 @@ BLOCK_OFFSET(i) = HEADER_SIZE
 2. Derive `master_key` via Argon2id
 3. Derive `enc_key`, `header_key` via HKDF
 4. Generate `file_id`
-5. Set `version = 1`
-6. Build header
-7. Compute `header_tag`
+5. Build header
+6. Compute `header_tag`
 
 ### 9.2 Read
 
@@ -229,8 +228,8 @@ i = off / block_size
 For each block:
 
 1. Read block
-2. Reconstruct AAD
-3. Derive nonce
+2. Extract `nonce_i` from first 12 bytes of stored block
+3. Reconstruct AAD
 4. Decrypt and verify
 
 For the final block:
@@ -242,10 +241,9 @@ valid_bytes = file_size - i * block_size
 ### 9.3 Write
 
 1. Identify affected blocks
-2. Increment `version`
-3. Update header
-4. Recompute `header_tag`
-5. Re-encrypt modified blocks
+2. For each affected block: generate fresh `nonce_i` via `RAND_bytes`
+3. Re-encrypt modified blocks
+4. Store `[ nonce_i | ciphertext_i | tag_i ]`
 
 ### 9.4 Partial Writes
 
@@ -265,17 +263,19 @@ valid_bytes = file_size - i * block_size
 
 ## 11. Security Properties
 
-| Property          | Mechanism                    |
-|-------------------|------------------------------|
-| Confidentiality   | AES-CTR (GCM)                |
-| Integrity         | GCM authentication tag       |
-| Position binding  | `block_index` in AAD         |
-| Replay protection | `version` in AAD (intra-file) |
+| Property             | Mechanism                          |
+|----------------------|------------------------------------|
+| Confidentiality      | AES-CTR (GCM)                      |
+| Integrity            | GCM authentication tag             |
+| Position binding     | `block_index` in AAD               |
+| Cross-file binding   | `file_id` in AAD                   |
+| Nonce freshness      | CSPRNG per encryption              |
 
 ---
 
 ## 12. Limitations
 
+- No protection against block-level replay by a snapshot attacker. A stored `[nonce | ciphertext | tag]` unit captured from an older file state can be substituted back undetected. Closing this requires per-block version tracking, deferred to a future phase.
 - No protection against full file rollback
 - No crash consistency guarantees
 - No journaling or atomic writes

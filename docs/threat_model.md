@@ -39,7 +39,7 @@ The attacker can read, copy, modify, delete, or truncate the entire `.evl` file.
 
 ### 3.2 Active Manipulation Capabilities
 
-The attacker can modify ciphertext, modify authentication tags, swap or reorder blocks, replay old blocks, and modify header fields.
+The attacker can modify ciphertext, modify authentication tags, swap or reorder blocks, substitute blocks captured from older file snapshots, and modify header fields.
 
 ### 3.3 Offline Attack Capability
 
@@ -69,9 +69,9 @@ Any modification to data is detected.
 
 Data cannot be rearranged or misinterpreted without detection.
 
-### 4.4 Replay Protection (Intra-file)
+### 4.4 Nonce Freshness
 
-Old blocks cannot be reused within the same file version.
+Each block encryption uses a unique nonce, preventing ciphertext reuse under the same key.
 
 ---
 
@@ -90,14 +90,14 @@ The GCM authentication tag detects any modification to ciphertext or AAD.
 AAD is constructed as:
 
 ```
-file_id || block_index || version || block_size
+file_id || block_index || block_size
 ```
 
-This prevents block swapping, cross-file substitution, and structural tampering.
+This prevents block swapping, cross-file substitution, and structural tampering. Version is not included — see Section 7.5 for why block-level replay is an explicit limitation.
 
-### 5.4 Versioning (Replay Protection)
+### 5.4 Random Nonce Generation (Nonce Freshness)
 
-A global version counter is included in both the nonce and AAD, preventing reuse of old blocks within the same file.
+A fresh 12-byte nonce is generated via CSPRNG (`RAND_bytes`) on every block encryption, including rewrites. The nonce is stored on disk with the block. This guarantees nonce uniqueness across all encryptions under the same key without requiring any version tracking.
 
 ### 5.5 Header Authentication
 
@@ -117,10 +117,10 @@ Argon2id protects against brute-force attacks. The salt prevents precomputation 
 | 6.2 | Modify authentication tag | Tag mismatch → decryption fails |
 | 6.3 | Swap `BLOCK_i` and `BLOCK_j` | `block_index` in AAD → mismatch → failure |
 | 6.4 | Insert block from another file | `file_id` in AAD → mismatch → failure |
-| 6.5 | Replace block with older version | `version` in AAD → mismatch → failure |
+| 6.5 | Substitute block from captured snapshot | **Not mitigated** — entire `[nonce\|ciphertext\|tag]` unit is self-consistent; see Section 7.5 |
 | 6.6 | Modify header fields | Header authentication fails → reject file |
-| 6.7 | Force nonce reuse | Nonce derived from `(file_id, block_index, version)` → uniqueness guaranteed |
-| 6.8 | Offline password brute-force | Argon2id → high computational cost |
+| 6.7 | Force nonce reuse | Fresh `RAND_bytes(12)` per encryption → collision probability negligible (≈1/2⁹⁶ per pair) |
+| 6.8 | Offline password brute-force | Argon2id → high computational and memory cost |
 
 ---
 
@@ -142,6 +142,10 @@ Timing attacks and memory leakage are not addressed in v1.
 
 The security of the system depends on the strength of the user's password. EVL provides no enforcement or policy on password quality.
 
+### 7.5 Block-Level Replay
+
+Substitution of a block captured from an older snapshot of the file is **not prevented**. Under random nonces, a stored `[nonce | ciphertext | tag]` unit is self-consistent — it was generated legitimately under the same key, so all authentication checks pass regardless of when it was created. Preventing this requires a per-block version counter that is persistently tracked, authenticated, and verified at decrypt time. This introduces version table authentication, write ordering constraints, and crash consistency exposure that are out of scope for v1. This limitation is distinct from full file rollback (Section 7.1) — it applies at the granularity of individual blocks.
+
 ---
 
 ## 8. Trust Assumptions
@@ -152,12 +156,12 @@ The following are assumed secure:
 
 - AES-GCM
 - Argon2id
-- SHA-256
+- HKDF (HMAC-SHA256)
 
 ### 8.2 Implementation Correctness
 
 - No bugs in cryptographic usage
-- Correct nonce handling throughout
+- Fresh nonce generated on every block encryption, including rewrites
 - Proper tag verification before returning plaintext
 
 ---
@@ -177,6 +181,6 @@ On header failure:
 
 ## 10. Summary
 
-EVL v1 provides strong confidentiality, strong integrity, and protection against structural attacks (block swapping, replay, cross-file substitution, header tampering).
+EVL v1 provides strong confidentiality, strong integrity, and protection against structural attacks (block swapping, cross-file substitution, header tampering). Nonce freshness is guaranteed by CSPRNG generation on every encryption.
 
-EVL v1 does **not** provide rollback protection, crash safety, side-channel resistance, or protection against weak passwords.
+EVL v1 does **not** provide block-level replay protection, full file rollback protection, crash safety, side-channel resistance, or protection against weak passwords.

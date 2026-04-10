@@ -49,23 +49,21 @@ AES-GCM provides both confidentiality (encryption) and integrity (authentication
 
 ---
 
-## 4. Why Deterministic Nonce
+## 4. Why Random Nonce
 
-**Decision:** Derive nonce from:
-
-```
-file_id || block_index || version
-```
+**Decision:** Generate a fresh 12-byte nonce per block encryption using a CSPRNG (`RAND_bytes`), stored on disk alongside each block.
 
 **Rationale:**
 
-- Eliminates the need to store nonces on disk
-- Guarantees reproducibility during decryption
-- Prevents accidental nonce reuse
+Deterministic nonce derivation was considered first, using `SHA-256(file_id || block_index || version)`. This approach was rejected because guaranteeing nonce uniqueness across rewrites requires a version counter that changes with every write. A global version counter fails this — it changes on every write but is not tracked per block, meaning a re-encrypted block and an unchanged block can end up with mismatched version assumptions. Closing this correctly requires per-block version tracking, which introduces version table authentication, write ordering constraints, and crash consistency exposure — complexity out of scope for v1.
 
-**Critical requirement:** Nonce **MUST** be unique per (key, encryption instance). Version **MUST** be included to prevent reuse on overwrite.
+Random nonces achieve the same security goal (nonce uniqueness per encryption) without any of this complexity. Uniqueness is guaranteed by the CSPRNG rather than by protocol invariants that must be manually maintained.
 
-**Conclusion:** Deterministic nonce derivation is safe given the controlled input space.
+**Tradeoff:** Nonces must be stored on disk, adding 12 bytes per block. Reproducibility during decryption is maintained because the nonce is read from the stored block rather than derived.
+
+**Critical requirement:** Nonce **MUST** be generated fresh on every encryption of a block, including rewrites. Reusing a stored nonce on overwrite is forbidden.
+
+**Conclusion:** Random nonces are simpler, correct by construction, and eliminate a class of protocol errors that deterministic nonces require careful discipline to avoid.
 
 ---
 
@@ -94,21 +92,19 @@ file_id || block_index || version
 
 ---
 
-## 7. Why Global Versioning
+## 7. Why No Block-Level Replay Protection
 
-**Decision:** Use a single version counter per file.
+**Decision:** Do not protect against block-level replay by a snapshot attacker.
 
 **Rationale:**
 
-- Prevents replay of old blocks
-- Simpler than per-block versioning
-- Avoids metadata complexity
+Under random nonces, version in AAD does not prevent block-level replay. An attacker who captures a snapshot of the file at time T holds the complete `[nonce | ciphertext | tag]` unit for each block. Substituting an old block back into a newer file passes all authentication checks regardless of whether a version field is present in AAD, because the replayed block carries its own self-consistent nonce and tag generated under the same key.
 
-**Tradeoff:** Does not prevent full file rollback; versioning is coarse-grained.
+Closing this attack requires per-block version tracking: a persistent, authenticated counter per block that increments on every rewrite and is verified at decrypt time. This introduces a version table as a new on-disk structure, version table authentication, write ordering constraints between the block and its counter, and crash consistency exposure. This is out of scope for v1.
 
-**Alternatives rejected:** Per-block versioning introduces complex metadata, consistency issues, and higher implementation risk.
+**Alternatives rejected:** Global version counter in AAD — provides false confidence under random nonces without per-block tracking. Per-block versioning — correct but introduces filesystem-level consistency complexity.
 
-**Conclusion:** Global versioning provides sufficient protection for v1.
+**Conclusion:** Block-level replay is a documented limitation. A snapshot attacker can substitute an old block undetected. This is explicitly out of scope for v1 and requires per-block versioning to close in a future phase.
 
 ---
 
@@ -164,25 +160,23 @@ file_id || block_index || version
 
 ---
 
-## 13. Why Include `version` in AAD
+## 13. Why `version` Was Removed from AAD
 
-**Decision:** Include `version` in AAD.
+**Decision:** Do not include `version` in AAD.
 
-**Rationale:** Prevents replay of old blocks by binding each encryption to the file's current version counter.
+**Rationale:** Under random nonces, version in AAD provides no security guarantee against block-level replay. A snapshot attacker replays the entire `[nonce | ciphertext | tag]` unit, which was generated self-consistently at encryption time. The version field in AAD would need to match the version *at the time of encryption of that specific block*, not the current file version — meaning the reader must know the per-block version to reconstruct the correct AAD, which requires per-block version storage. Without that, the field either always matches (useless) or always mismatches (breaks decryption). See decision #7 for the full analysis.
 
-**Conclusion:** `version` is required for intra-file replay protection.
+**Conclusion:** `version` is removed from AAD. Block-level replay is a documented out-of-scope limitation.
 
 ---
 
-## 14. Why SHA-256 for Nonce Derivation
+## 14. Why CSPRNG for Nonce Generation
 
-**Decision:** Use SHA-256 to derive per-block nonces.
+**Decision:** Use `RAND_bytes` (OpenSSL CSPRNG) to generate per-block nonces.
 
-**Rationale:** SHA-256 is deterministic, produces uniform output, and has negligible collision probability over the expected input space.
+**Rationale:** Nonce uniqueness is the only hard requirement for AES-GCM security. A CSPRNG producing 96-bit random values has a collision probability of approximately 1 in 2^96 per pair, which is negligible across any realistic number of blocks. This is simpler and more robust than deterministic derivation, which requires careful protocol invariants to guarantee uniqueness across rewrites.
 
-**Tradeoff:** Slight computational overhead per block access.
-
-**Conclusion:** Acceptable for v1; can be optimized in later versions.
+**Conclusion:** CSPRNG nonce generation is the standard approach for random-access encrypted storage and is correct by construction.
 
 ---
 
@@ -230,3 +224,9 @@ EVL v1 prioritizes:
 - Simplicity over feature completeness
 - Strong integrity guarantees
 - Minimal attack surface
+
+**Known limitations accepted in v1:**
+
+- No block-level replay protection (requires per-block versioning, deferred)
+- No full file rollback protection (requires external trusted state, out of scope)
+- No crash consistency guarantees (no journaling or atomic writes)
