@@ -25,4 +25,5 @@ test_utils
 test_header
 test_aad
 test_nonce
+test_block
 *.out
