@@ -26,4 +26,5 @@ test_header
 test_aad
 test_nonce
 test_block
+test_kdf
 *.out
