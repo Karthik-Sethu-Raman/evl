@@ -1,6 +1,7 @@
 #include <openssl/evp.h>
 #include <string.h>
 #include "crypto.h"
+#include "evl_types.h"
 
 int evl_aes_gcm_encrypt(
     const uint8_t *key,

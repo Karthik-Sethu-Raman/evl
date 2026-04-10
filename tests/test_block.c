@@ -1,15 +1,15 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
-
+#include "evl_types.h"
 #include "block.h"
+#include "evl_types.h"
 
 int main() {
     evl_header_t header;
 
     // ---- Setup header ----
-    memcpy(header.file_id, "\xAA\xAA\xAA\xAA\xAA\xAA\xAA\xAA\xAA\xAA\xAA\xAA\xAA\xAA\xAA\xAA", 16);
-    header.version = 1;
+    memset(header.file_id, 0xAA, EVL_FILE_ID_SIZE);
     header.block_size = 4096;
 
     uint8_t key[32] = {0};
@@ -17,62 +17,87 @@ int main() {
     uint8_t plaintext[] = "block test data";
     size_t pt_len = strlen((char*)plaintext);
 
+    uint8_t nonce[EVL_NONCE_SIZE];
     uint8_t ciphertext[128];
     uint8_t decrypted[128];
-    uint8_t tag[16];
+    uint8_t tag[EVL_TAG_SIZE];
 
     printf("=== BLOCK TEST ===\n\n");
 
-    // encrypt
+    // ---- Encrypt ----
     if (evl_encrypt_block(
         &header,
         key,
         0,
         plaintext,
         pt_len,
+        nonce,
         ciphertext,
         tag
     ) != 0) {
-        printf("Encrypt failed\n");
+        printf("FAIL: Encrypt failed\n");
         return 1;
     }
+    printf("PASS: Encryption succeeded\n");
 
-    // decrypt
+    // ---- Decrypt ----
     if (evl_decrypt_block(
         &header,
         key,
         0,
+        nonce,
         ciphertext,
         pt_len,
         tag,
         decrypted
     ) != 0) {
-        printf("Decrypt failed\n");
+        printf("FAIL: Decrypt failed\n");
         return 1;
     }
 
     if (memcmp(plaintext, decrypted, pt_len) == 0) {
-        printf("PASS: Block encryption/decryption correct\n");
+        printf("PASS: Block encrypt/decrypt roundtrip correct\n\n");
     } else {
-        printf("FAIL: Mismatch\n");
+        printf("FAIL: Plaintext mismatch after decryption\n");
         return 1;
     }
 
-    // ---- Tamper test ----
+    // ---- Tamper test: corrupt tag ----
     tag[0] ^= 0xFF;
 
     if (evl_decrypt_block(
         &header,
         key,
         0,
+        nonce,
         ciphertext,
         pt_len,
         tag,
         decrypted
     ) != 0) {
-        printf("PASS: Tampering detected\n");
+        printf("PASS: Tag tampering detected\n\n");
     } else {
-        printf("FAIL: Tampering NOT detected\n");
+        printf("FAIL: Tag tampering NOT detected\n");
+        return 1;
+    }
+
+    // ---- Tamper test: corrupt nonce ----
+    tag[0] ^= 0xFF;  // restore tag
+    nonce[0] ^= 0xFF;
+
+    if (evl_decrypt_block(
+        &header,
+        key,
+        0,
+        nonce,
+        ciphertext,
+        pt_len,
+        tag,
+        decrypted
+    ) != 0) {
+        printf("PASS: Nonce tampering detected\n\n");
+    } else {
+        printf("FAIL: Nonce tampering NOT detected\n");
         return 1;
     }
 

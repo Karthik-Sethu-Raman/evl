@@ -1,21 +1,15 @@
-#include <openssl/sha.h>
-#include <string.h>
-
+#include <openssl/rand.h>
 #include "nonce.h"
-#include "utils.h"
+#include "evl_types.h"
 
-int evl_derive_block_nonce(
-    const uint8_t *file_id,
-    uint64_t block_index,
-    uint64_t version,
+int evl_generate_block_nonce(
     uint8_t *nonce_out
 ){
-    uint8_t buffer[16+8+8];
-    uint8_t hash[32];
-    memcpy(buffer, file_id, 16);
-    write_u64_le(buffer+16, block_index);
-    write_u64_le(buffer+24, version);
-    SHA256(buffer, sizeof(buffer), hash);
-    memcpy(nonce_out, hash, EVL_NONCE_SIZE);
+    if (!nonce_out)
+        return -1;
+
+    if (RAND_bytes(nonce_out, EVL_NONCE_SIZE) != 1)
+        return -1;
+
     return 0;
 }

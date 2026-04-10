@@ -17,7 +17,6 @@ int evl_header_serialize(const evl_header_t *h, uint8_t *buf){
     memcpy(buf+37, h->file_id, EVL_FILE_ID_SIZE);
     write_u64_le(buf+53, h->file_size);
     write_u32_le(buf+61, h->block_size);
-    write_u64_le(buf+65, h->version);
     return 0;
 }
 
@@ -40,7 +39,5 @@ int evl_header_deserialize(const uint8_t *buf, evl_header_t *h){
     if (h->block_size == 0){
         return -4;
     }
-    h->version = read_u64_le(buf+65);
     return 0;
 }
-

@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-
 #include "crypto.h"
 
 void print_hex(const uint8_t *buf, size_t len) {
