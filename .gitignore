@@ -23,4 +23,6 @@
 test_crypto
 test_utils
 test_header
+test_aad
+test_nonce
 *.out
