@@ -2,7 +2,6 @@
 #define NONCE_H
 #include <stdint.h>
 
-#define EVL_NONCE_SIZE 12
 
 int evl_derive_block_nonce(
     const uint8_t *file_id,

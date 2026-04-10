@@ -43,6 +43,7 @@ static int hkdf_expand(
     uint8_t *out,
     size_t out_len
 ){
+    
     EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new_id(EVP_PKEY_HKDF, NULL);
     if (!pctx)
         return -1;
@@ -51,6 +52,9 @@ static int hkdf_expand(
     size_t len = out_len;
 
     if (EVP_PKEY_derive_init(pctx) <= 0)
+        goto cleanup;
+
+    if (EVP_PKEY_CTX_set_hkdf_mode(pctx, EVP_PKEY_HKDEF_MODE_EXPAND_ONLY) <= 0)
         goto cleanup;
 
     if (EVP_PKEY_CTX_set_hkdf_md(pctx, EVP_sha256()) <= 0)

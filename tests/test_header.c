@@ -47,7 +47,7 @@ int main() {
     original.version = 1;
 
  
-    evl_header_serialize(&original, buffer);
+
     if (evl_header_serialize(&original, buffer) != 0) {
         printf("\nFAIL: Serialization failed for valid header\n");
         return 1;
@@ -56,7 +56,7 @@ int main() {
     printf("Serialized Header (hex):\n");
     print_hex(buffer, BUF_SIZE);
 
-    evl_header_deserialize(buffer, &reconstructed);
+
     if (evl_header_deserialize(buffer, &reconstructed) != 0) {
         printf("\nFAIL: Deserialization failed for valid header\n");
         return 1;
