@@ -4,8 +4,6 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define EVL_TAG_SIZE 16
-
 
 int evl_aes_gcm_encrypt(
     const uint8_t *key,

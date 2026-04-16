@@ -6,6 +6,10 @@
 #define EVL_FILE_ID_SIZE 16
 #define EVL_NONCE_SIZE 12
 #define EVL_TAG_SIZE 16
+#define EVL_MASTER_KEY_SIZE 32
+#define EVL_KEY_SIZE 32
+#define EVL_DEFAULT_BLOCK_SIZE 4096
+#define EVL_AAD_SIZE           28  
 
 typedef struct {
     uint8_t magic[4];

@@ -11,7 +11,7 @@ EVL (Encrypted Virtual Locker) is a block-based encrypted file container that pr
 The file is structured as:
 
 ```
-[ HEADER | HEADER_TAG | BLOCK_0 | BLOCK_1 | ... ]
+[ HEADER | HEADER_NONCE | HEADER_TAG | BLOCK_0 | BLOCK_1 | ... ]
 ```
 
 ---
@@ -61,7 +61,7 @@ Derived keys:
 
 ### 2.6 Nonce Generation
 
-Per-block nonces are generated using a CSPRNG (`RAND_bytes`) at encryption time and stored on disk with each block.
+All nonces — both per-block and header — are generated using a CSPRNG (`RAND_bytes`) and stored on disk. No nonces are derived deterministically.
 
 ---
 
@@ -69,10 +69,10 @@ Per-block nonces are generated using a CSPRNG (`RAND_bytes`) at encryption time 
 
 ### 3.1 Structure
 
-The header is stored in plaintext and authenticated separately.
+The header is stored in plaintext and authenticated separately. The nonce used for authentication is stored on disk immediately after the header plaintext.
 
 ```
-[ HEADER | HEADER_TAG ]
+[ HEADER | HEADER_NONCE | HEADER_TAG ]
 ```
 
 ### 3.2 Field Layout
@@ -89,8 +89,9 @@ The header is stored in plaintext and authenticated separately.
 ### 3.3 Header Size
 
 ```
-HEADER_SIZE     = 65 bytes
-HEADER_TAG_SIZE = 16 bytes
+HEADER_SIZE       = 65 bytes
+HEADER_NONCE_SIZE = 12 bytes
+HEADER_TAG_SIZE   = 16 bytes
 ```
 
 ### 3.4 Header Authentication
@@ -102,8 +103,10 @@ header_tag = AES-GCM(header_key, nonce_header, HEADER, AAD_header)
 ### 3.5 Header Nonce
 
 ```
-nonce_header = first 12 bytes of SHA-256(file_id || "HEADER")
+nonce_header = RAND_bytes(12)
 ```
+
+Generated fresh on file creation and on every header rewrite. Stored on disk at offset `HEADER_SIZE`, immediately before `HEADER_TAG`.
 
 ### 3.6 Header AAD
 
@@ -115,10 +118,11 @@ AAD_header = "EVL_HEADER_V1"
 
 On file open:
 
-1. Read `HEADER` and `HEADER_TAG`
-2. Derive `header_key`
-3. Recompute `nonce_header`
-4. Verify authentication tag
+1. Read `HEADER` (65 bytes at offset 0)
+2. Read `HEADER_NONCE` (12 bytes at offset `HEADER_SIZE`)
+3. Read `HEADER_TAG` (16 bytes at offset `HEADER_SIZE + HEADER_NONCE_SIZE`)
+4. Derive `header_key`
+5. Verify authentication tag
 
 On failure:
 
@@ -200,6 +204,7 @@ stored_block_i             = [ nonce_i | ciphertext_i | tag_i ]
 
 ```
 BLOCK_OFFSET(i) = HEADER_SIZE
+                + HEADER_NONCE_SIZE
                 + HEADER_TAG_SIZE
                 + i * (NONCE_SIZE + block_size + TAG_SIZE)
 ```
@@ -210,12 +215,14 @@ BLOCK_OFFSET(i) = HEADER_SIZE
 
 ### 9.1 Creation
 
-1. Generate `salt`
+1. Generate `salt` via `RAND_bytes`
 2. Derive `master_key` via Argon2id
 3. Derive `enc_key`, `header_key` via HKDF
-4. Generate `file_id`
+4. Generate `file_id` via `RAND_bytes`
 5. Build header
-6. Compute `header_tag`
+6. Generate `header_nonce` via `RAND_bytes`
+7. Compute `header_tag`
+8. Write `[ HEADER | HEADER_NONCE | HEADER_TAG ]` to disk
 
 ### 9.2 Read
 
@@ -227,10 +234,12 @@ i = off / block_size
 
 For each block:
 
-1. Read block
-2. Extract `nonce_i` from first 12 bytes of stored block
-3. Reconstruct AAD
-4. Decrypt and verify
+1. Seek to `BLOCK_OFFSET(i)`
+2. Read `nonce_i` (first 12 bytes)
+3. Read `ciphertext_i` (next `block_size` bytes, or fewer for final block)
+4. Read `tag_i` (final 16 bytes)
+5. Reconstruct AAD
+6. Decrypt and verify
 
 For the final block:
 
@@ -243,7 +252,8 @@ valid_bytes = file_size - i * block_size
 1. Identify affected blocks
 2. For each affected block: generate fresh `nonce_i` via `RAND_bytes`
 3. Re-encrypt modified blocks
-4. Store `[ nonce_i | ciphertext_i | tag_i ]`
+4. Store `[ nonce_i | ciphertext_i | tag_i ]` at `BLOCK_OFFSET(i)`
+5. If write extends `file_size`: update `header.file_size` in memory, generate fresh `header_nonce`, recompute `header_tag`, overwrite `[ HEADER | HEADER_NONCE | HEADER_TAG ]` at offset 0
 
 ### 9.4 Partial Writes
 
