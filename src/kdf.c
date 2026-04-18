@@ -63,7 +63,7 @@ static int hkdf_expand(
     if (EVP_PKEY_CTX_set1_hkdf_key(pctx, key, key_len) <= 0)
         goto cleanup;
 
-    if (EVP_PKEY_CTX_add1_hkdf_info(pctx, info, strlen(info)) <= 0)
+    if (EVP_PKEY_CTX_add1_hkdf_info(pctx, (const unsigned char *)info, strlen(info)) <= 0)
         goto cleanup;
 
     if (EVP_PKEY_derive(pctx, out, &len) <= 0)

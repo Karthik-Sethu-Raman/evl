@@ -26,7 +26,7 @@ static int evl_seal_header(
     memcpy(aad, EVL_HEADER_AAD_PREFIX, EVL_HEADER_AAD_PREFIX_LEN);
     memcpy(aad + EVL_HEADER_AAD_PREFIX_LEN, header_buf, EVL_HEADER_SIZE);
 
-    uint8_t dummy[1];
+    uint8_t dummy[1]={0};
 
     return evl_aes_gcm_encrypt(
         header_key,
@@ -50,7 +50,7 @@ static int evl_verify_header(
     memcpy(aad, EVL_HEADER_AAD_PREFIX, EVL_HEADER_AAD_PREFIX_LEN);
     memcpy(aad + EVL_HEADER_AAD_PREFIX_LEN, header_buf, EVL_HEADER_SIZE);
 
-    uint8_t dummy[1];
+    uint8_t dummy[1]={0};
 
     return evl_aes_gcm_decrypt(
         header_key,

@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "crypto.h"
+#include "evl_types.h"
 
 void print_hex(const uint8_t *buf, size_t len) {
     for (size_t i = 0; i < len; i++) {
