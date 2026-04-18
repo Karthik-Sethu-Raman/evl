@@ -289,3 +289,4 @@ valid_bytes = file_size - i * block_size
 - No protection against full file rollback
 - No crash consistency guarantees
 - No journaling or atomic writes
+- No multi-file support, requires a filesystem layer (next phase)
