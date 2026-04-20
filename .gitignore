@@ -29,6 +29,4 @@ test_block
 test_kdf
 test_evl_file
 *.out
-
-#build
-evl
+test_blocks

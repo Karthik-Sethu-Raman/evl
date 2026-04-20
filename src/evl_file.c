@@ -295,17 +295,9 @@ int evl_write_block(
         EVL_HEADER_TAG_SIZE +
         block_index * (EVL_NONCE_SIZE + f->header.block_size + EVL_TAG_SIZE);
 
-    if (lseek(f->fd, offset, SEEK_SET) < 0)
-        return -1;
-
-    if (write(f->fd, nonce, EVL_NONCE_SIZE) != EVL_NONCE_SIZE)
-        return -1;
-
-    if (write(f->fd, ciphertext, f->header.block_size) != (ssize_t)f->header.block_size)
-        return -1;
-
-    if (write(f->fd, tag, EVL_TAG_SIZE) != EVL_TAG_SIZE)
-        return -1;
+    if (pwrite(f->fd, nonce,      EVL_NONCE_SIZE,             offset)                                          != EVL_NONCE_SIZE)                return -1;
+    if (pwrite(f->fd, ciphertext, f->header.block_size,       offset + EVL_NONCE_SIZE)                         != (ssize_t)f->header.block_size) return -1;
+    if (pwrite(f->fd, tag,        EVL_TAG_SIZE,               offset + EVL_NONCE_SIZE + f->header.block_size)  != EVL_TAG_SIZE)                  return -1;
 
     uint64_t old_size = f->header.file_size;
     uint64_t end_pos = block_index * f->header.block_size + data_len;
@@ -327,17 +319,9 @@ int evl_write_block(
         if (evl_seal_header(f->header_key, header_nonce, header_buf, header_tag) != 0)
             goto header_fail;
        
-        if (lseek(f->fd, 0, SEEK_SET) < 0)
-            goto header_fail;
-
-        if (write(f->fd, header_buf, EVL_HEADER_SIZE) != EVL_HEADER_SIZE)
-            goto header_fail;
-
-        if (write(f->fd, header_nonce, EVL_HEADER_NONCE_SIZE) != EVL_HEADER_NONCE_SIZE)
-            goto header_fail;
-
-        if (write(f->fd, header_tag, EVL_HEADER_TAG_SIZE) != EVL_HEADER_TAG_SIZE)
-            goto header_fail;
+        if (pwrite(f->fd, header_buf,   EVL_HEADER_SIZE,       0)                                       != EVL_HEADER_SIZE)       goto header_fail;
+        if (pwrite(f->fd, header_nonce, EVL_HEADER_NONCE_SIZE, EVL_HEADER_SIZE)                         != EVL_HEADER_NONCE_SIZE) goto header_fail;
+        if (pwrite(f->fd, header_tag,   EVL_HEADER_TAG_SIZE,   EVL_HEADER_SIZE + EVL_HEADER_NONCE_SIZE) != EVL_HEADER_TAG_SIZE)   goto header_fail;
         
 
     }
@@ -394,17 +378,9 @@ int evl_read_block(
         EVL_HEADER_TAG_SIZE +
         block_index * (EVL_NONCE_SIZE + block_size + EVL_TAG_SIZE);
 
-    if (lseek(f->fd, offset, SEEK_SET) < 0)
-        return -1;
-
-    if (read(f->fd, nonce, EVL_NONCE_SIZE) != EVL_NONCE_SIZE)
-        return -1;
-
-    if (read(f->fd, ciphertext, block_size) != (ssize_t)block_size)
-        return -1;
-
-    if (read(f->fd, tag, EVL_TAG_SIZE) != EVL_TAG_SIZE)
-        return -1;
+    if (pread(f->fd, nonce,      EVL_NONCE_SIZE, offset)                              != EVL_NONCE_SIZE)          return -1;
+    if (pread(f->fd, ciphertext, block_size,     offset + EVL_NONCE_SIZE)             != (ssize_t)block_size)     return -1;
+    if (pread(f->fd, tag,        EVL_TAG_SIZE,   offset + EVL_NONCE_SIZE + block_size) != EVL_TAG_SIZE)            return -1;
 
     evl_build_block_aad(
         f->header.file_id,
@@ -431,4 +407,3 @@ int evl_read_block(
 
     return 0;
 }
-
