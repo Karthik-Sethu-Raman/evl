@@ -285,8 +285,8 @@ valid_bytes = file_size - i * block_size
 
 ## 12. Limitations
 
-- No protection against block-level replay by a snapshot attacker. A stored `[nonce | ciphertext | tag]` unit captured from an older file state can be substituted back undetected. Closing this requires per-block version tracking, deferred to a future phase.
+- No protection against block-level replay by a snapshot attacker. A stored `[nonce | ciphertext | tag]` unit captured from an older file state can be substituted back undetected. Closing this requires per-block version tracking, deferred to Phase 3.
 - No protection against full file rollback
 - No crash consistency guarantees
 - No journaling or atomic writes
-- No multi-file support, requires a filesystem layer (next phase)
+- Single-file container only — multi-file support requires a filesystem layer (Phase 2)

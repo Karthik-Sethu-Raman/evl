@@ -9,7 +9,7 @@ This document defines the threat model for EVL v1, including:
 - Protections provided
 - Limitations and non-goals
 
-The model assumes a **hostile storage environment** where attackers can fully access and manipulate the `.evl` file.
+The model assumes a **hostile storage environment** where attackers can fully access and manipulate the `.evl` file. Phase 1 is complete — the full CLI and FUSE mount layer are implemented and verified.
 
 ---
 

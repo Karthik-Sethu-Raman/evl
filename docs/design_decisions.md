@@ -202,7 +202,7 @@ Closing this attack requires per-block version tracking: a persistent, authentic
 
 **Alternatives rejected:** A kernel module (`.ko`) is complex, unsafe to iterate on, and harder to debug without significant added benefit at this stage.
 
-**Conclusion:** FUSE is appropriate for the initial implementation.
+**Conclusion:** FUSE is appropriate for the initial implementation. Implemented in Phase 1.
 
 ---
 
@@ -212,7 +212,7 @@ Closing this attack requires per-block version tracking: a persistent, authentic
 
 **Rationale:** VBD requires kernel-level integration and carries significantly higher complexity without being necessary for core functionality.
 
-**Conclusion:** VBD is deferred as future work.
+**Conclusion:** VBD is deferred as future work. FUSE (Phase 1) is the current mount mechanism.
 
 ---
 

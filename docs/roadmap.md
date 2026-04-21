@@ -11,73 +11,52 @@ The project is structured in incremental phases, prioritizing:
 - Then system-level integration
 - Then advanced features
 
-> This document covers Phases 0.1 through 1.0. Later phases are planned but not yet documented.
-
 ---
 
-## 2. Phase 0.1 — Core Format & Crypto Engine (Pre-FUSE)
+## 2. Phase 0.1 — Core Format & Crypto Engine
 
-**Status:** In Progress
-
-### Goals
-
-- Define EVL file format (v1)
-- Implement core cryptographic pipeline
-- Ensure correctness and integrity guarantees
+**Status:** Complete
 
 ### Deliverables
 
 - Format specification (`evl_format_v1.md`)
 - Design decisions documentation
 - Threat model
-- Core library implementation in C:
+- Core library in C:
   - Key derivation (Argon2id + HKDF)
-  - AES-GCM wrapper
-  - Nonce derivation
+  - AES-256-GCM wrapper
+  - Random nonce generation
   - AAD construction
-  - Header parsing and authentication
+  - Header serialization and authentication
   - Block read/write logic
-
-### Out of Scope
-
-- FUSE integration
-- CLI usability
-- Performance optimization
-- Crash consistency
 
 ---
 
 ## 3. Phase 0.2 — CLI Interface
 
-### Goals
+**Status:** Complete
 
-Provide basic user interaction with EVL files.
+### Deliverables
 
-### Features
-
-- Create EVL file
-- Open EVL file
-- Read/write data
-- Inspect metadata
-
-### Notes
-
-- Still operates on EVL as a raw file (not a mounted filesystem)
-- Acts as a testing layer for the core engine
+- `evl create` — create encrypted container
+- `evl write` — encrypt file into container
+- `evl read` — decrypt container to stdout
+- `evl info` — inspect container metadata
+- `evl verify` — verify header authentication
 
 ---
 
 ## 4. Phase 1.0 — FUSE Integration
 
-### Goals
+**Status:** Complete
 
-Mount EVL as a virtual filesystem using FUSE.
+### Deliverables
 
-### Features
-
-- File mounting and unmounting
-- Read/write via standard file operations
-- Transparent encryption and decryption
+- `evl mount` — mount container as virtual filesystem
+- Single virtual file (`locker.bin`) exposed at mountpoint
+- Transparent block-level read/write via FUSE callbacks
+- Concurrent-safe I/O via `pread`/`pwrite`
+- Clean unmount via `evl_fuse_destroy`
 
 ### Architecture
 
@@ -89,7 +68,50 @@ Mount EVL as a virtual filesystem using FUSE.
 [.evl File]
 ```
 
-### Rationale
+### Verified
 
-- User-space implementation avoids kernel-level complexity
-- Easier to debug and iterate on than a kernel module
+- Full video playback through encrypted FUSE mount
+- Byte-perfect round-trip verified via diff
+- All security properties verified under active tampering
+
+---
+
+## 5. Phase 2.0 — Multi-File Filesystem Layer (Planned)
+
+**Status:** Planned
+
+### Goals
+
+- Support multiple named files inside a single `.evl` container
+- Expose a full directory structure at the mountpoint
+
+### Requires
+
+- On-disk inode/allocation table
+- Directory entry structure
+- File creation, deletion, rename operations
+- FUSE `readdir`, `mkdir`, `unlink`, `rename` callbacks
+
+### Notes
+
+- Cryptographic layer (Phase 1) remains unchanged
+- Adds a filesystem abstraction layer on top of existing block I/O
+
+---
+
+## 6. Phase 3.0 — Hardening (Planned)
+
+**Status:** Planned
+
+### Goals
+
+- Block-level replay protection via per-block version counters
+- Crash consistency via journaling or atomic write guarantees
+- Side-channel resistance (constant-time tag verification)
+- Argon2id parameter configurability
+
+### Notes
+
+- Block-level replay requires a persistent, authenticated version table
+- Crash consistency requires either journaling or copy-on-write semantics
+- Both introduce write ordering constraints and on-disk complexity
