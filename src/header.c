@@ -4,6 +4,9 @@
 #include "header.h"
 #include "utils.h"
 
+//65 byte header.
+
+//Function to serialize the header
 int evl_header_serialize(const evl_header_t *h, uint8_t *buf){
     if (h == NULL || buf == NULL){
         return -3;
@@ -20,6 +23,7 @@ int evl_header_serialize(const evl_header_t *h, uint8_t *buf){
     return 0;
 }
 
+//function to deserialize the header.
 int evl_header_deserialize(const uint8_t *buf, evl_header_t *h){
     if (buf == NULL || h == NULL){
         return -3;

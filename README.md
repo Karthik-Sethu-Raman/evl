@@ -4,7 +4,7 @@ EVL is a block-level encrypted file container implemented in C. It provides auth
 
 ## Status
 
-Phase 1 complete - CLI and FUSE mount layer functional.
+CLI and FUSE mount layer functional.
 
 ## Security Properties
 
@@ -104,7 +104,7 @@ The following attacks have been verified to be detected:
 - **Block-level replay** - a snapshot attacker who captured the file at time T can substitute an old `[nonce | ciphertext | tag]` unit back into a newer file undetected. The unit is self-consistent under the same key. Preventing this requires per-block version tracking, deferred to Phase 2.
 - **Full file rollback** - replacing the entire file with an older snapshot is not prevented. Requires external trusted state (TPM, remote counter).
 - **Crash consistency** - partial writes may corrupt the container. No journaling or atomic write guarantees.
-- **Single-file container** - one file per container in Phase 1. Multi-file support requires a filesystem layer.
+- **Single-file container** - one file per container in this phase. Multi-file support requires a filesystem layer.
 
 ## Documentation
 

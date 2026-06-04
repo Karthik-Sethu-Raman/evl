@@ -4,13 +4,6 @@
 
 This document captures the key architectural and cryptographic decisions made in EVL v1, along with their rationale and tradeoffs.
 
-The goal is to prioritize:
-
-- Correctness
-- Simplicity
-- Security guarantees
-- Implementation feasibility
-
 ---
 
 ## 2. Why AES-GCM over XTS
@@ -102,7 +95,7 @@ Under random nonces, version in AAD does not prevent block-level replay. An atta
 
 Closing this attack requires per-block version tracking: a persistent, authenticated counter per block that increments on every rewrite and is verified at decrypt time. This introduces a version table as a new on-disk structure, version table authentication, write ordering constraints between the block and its counter, and crash consistency exposure. This is out of scope for v1.
 
-**Alternatives rejected:** Global version counter in AAD — provides false confidence under random nonces without per-block tracking. Per-block versioning — correct but introduces filesystem-level consistency complexity.
+**Alternatives rejected:** Global version counter in AAD - provides false confidence under random nonces without per-block tracking. Per-block versioning — correct but introduces filesystem-level consistency complexity.
 
 **Conclusion:** Block-level replay is a documented limitation. A snapshot attacker can substitute an old block undetected. This is explicitly out of scope for v1 and requires per-block versioning to close in a future phase.
 
@@ -122,7 +115,7 @@ Closing this attack requires per-block version tracking: a persistent, authentic
 
 **Decision:** Use little-endian for all integers.
 
-**Rationale:** Matches x86 architecture conventions and simplifies implementation. Endianness **MUST** be fixed and consistent — a mismatch in encoding produces AAD mismatches, nonce mismatches, and authentication failures.
+**Rationale:** Matches x86 architecture conventions and simplifies implementation. Endianness **MUST** be fixed and consistent - a mismatch in encoding produces AAD mismatches, nonce mismatches, and authentication failures.
 
 **Conclusion:** Little-endian encoding is required for interoperability.
 
@@ -184,7 +177,7 @@ Closing this attack requires per-block version tracking: a persistent, authentic
 
 **Decision:** Do not protect against full file rollback.
 
-**Rationale:** Full rollback protection requires external trusted state — a TPM, remote counter, or trusted server. This is out of scope for v1.
+**Rationale:** Full rollback protection requires external trusted state - a TPM, remote counter, or trusted server. This is out of scope for v1.
 
 **Conclusion:** Explicit design limitation; documented in the format spec.
 

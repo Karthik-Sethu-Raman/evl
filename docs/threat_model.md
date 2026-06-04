@@ -93,7 +93,7 @@ AAD is constructed as:
 file_id || block_index || block_size
 ```
 
-This prevents block swapping, cross-file substitution, and structural tampering. Version is not included — see Section 7.5 for why block-level replay is an explicit limitation.
+This prevents block swapping, cross-file substitution, and structural tampering. Version is not included - see Section 7.5 for why block-level replay is an explicit limitation.
 
 ### 5.4 Random Nonce Generation (Nonce Freshness)
 
@@ -117,7 +117,7 @@ Argon2id protects against brute-force attacks. The salt prevents precomputation 
 | 6.2 | Modify authentication tag | Tag mismatch → decryption fails |
 | 6.3 | Swap `BLOCK_i` and `BLOCK_j` | `block_index` in AAD → mismatch → failure |
 | 6.4 | Insert block from another file | `file_id` in AAD → mismatch → failure |
-| 6.5 | Substitute block from captured snapshot | **Not mitigated** — entire `[nonce\|ciphertext\|tag]` unit is self-consistent; see Section 7.5 |
+| 6.5 | Substitute block from captured snapshot | **Not mitigated** - entire `[nonce\|ciphertext\|tag]` unit is self-consistent; see Section 7.5 |
 | 6.6 | Modify header fields | Header authentication fails → reject file |
 | 6.7 | Force nonce reuse | Fresh `RAND_bytes(12)` per encryption → collision probability negligible (≈1/2⁹⁶ per pair) |
 | 6.8 | Offline password brute-force | Argon2id → high computational and memory cost |
