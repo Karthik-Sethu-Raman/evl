@@ -25,8 +25,6 @@ test_utils
 test_header
 test_aad
 test_nonce
-test_block
 test_kdf
 test_evl_file
 *.out
-test_blocks

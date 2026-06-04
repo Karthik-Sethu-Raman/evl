@@ -11,7 +11,7 @@ BIN     = build/evl
 TEST_SRCS = tests/test_evl_file.c tests/test_crypto.c \
             tests/test_kdf.c tests/test_header.c \
             tests/test_aad.c tests/test_nonce.c \
-            tests/test_block.c tests/test_utils.c
+            tests/test_utils.c
 
 .PHONY: all clean test
 

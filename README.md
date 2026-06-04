@@ -4,7 +4,7 @@ EVL is a block-level encrypted file container implemented in C. It provides auth
 
 ## Status
 
-CLI and FUSE mount layer functional.
+v0.1.0 — CLI and FUSE mount layer complete.
 
 ## Security Properties
 
@@ -83,7 +83,8 @@ fusermount3 -u /tmp/mnt
 
 # Verify container integrity (header authentication)
 ./build/evl verify vault.evl
-```
+# OK: vault.evl authenticates correctly
+# FAIL: vault.evl (wrong password or tampered header)
 
 Passwords are always prompted interactively via `getpass()` - never passed as CLI arguments.
 
